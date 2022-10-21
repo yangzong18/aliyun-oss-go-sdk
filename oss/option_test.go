@@ -1,9 +1,8 @@
 package oss
 
 import (
-	"net/http"
-
 	. "gopkg.in/check.v1"
+	"net/http"
 )
 
 type OssOptionSuite struct{}
@@ -313,5 +312,28 @@ func (s *OssOptionSuite) TestDeleteOption(c *C) {
 
 	str, err = FindOption(skipOption, "key-marker", "")
 	c.Assert(str, Equals, "789")
+
+}
+
+func (s *OssOptionSuite) TestSetHeaderContentType(c *C) {
+	options := []Option{setHeader("content-type", "text/html")}
+	str, err := FindOption(options, HTTPHeaderContentType, nil)
+	c.Assert(err, IsNil)
+	c.Assert(str, Equals, "text/html")
+
+	options = []Option{setHeader("Content-Type", "text/plain")}
+	str, err = FindOption(options, HTTPHeaderContentType, nil)
+	c.Assert(err, IsNil)
+	c.Assert(str, Equals, "text/plain")
+
+	options = []Option{setHeader("CONTENT-Type", "text/dpdf")}
+	str, err = FindOption(options, HTTPHeaderContentType, nil)
+	c.Assert(err, IsNil)
+	c.Assert(str, Equals, "text/dpdf")
+
+	options = []Option{setHeader("Content-Type", "text/html;charset=utf-8")}
+	str, err = FindOption(options, HTTPHeaderContentType, nil)
+	c.Assert(err, IsNil)
+	c.Assert(str, Equals, "text/html;charset=utf-8")
 
 }

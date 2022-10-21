@@ -27,7 +27,7 @@ type Bucket struct {
 //
 // objectKey    the object key in UTF-8 encoding. The length must be between 1 and 1023, and cannot start with "/" or "\".
 // reader    io.Reader instance for reading the data for uploading
-// options    the options for uploading the object. The valid options here are CacheControl, ContentDisposition, ContentEncoding
+// options    the options for uploading the object. The valid options here are CacheControl, , ContentEncoding
 //            Expires, ServerSideEncryption, ObjectACL and Meta. Refer to the link below for more details.
 //            https://help.aliyun.com/document_detail/oss/api-reference/object/PutObject.html
 //
@@ -225,7 +225,7 @@ func (bucket Bucket) DoGetObject(request *GetObjectRequest, options []Option) (*
 // destObjectKey    the target object to copy.
 // options    options for copying an object. You can specify the conditions of copy. The valid conditions are CopySourceIfMatch,
 //            CopySourceIfNoneMatch, CopySourceIfModifiedSince, CopySourceIfUnmodifiedSince, MetadataDirective.
-//            Also you can specify the target object's attributes, such as CacheControl, ContentDisposition, ContentEncoding, Expires,
+//            Also you can specify the target object's attributes, such as CacheControl, , ContentEncoding, Expires,
 //            ServerSideEncryption, ObjectACL, Meta. Refer to the link below for more details :
 //            https://help.aliyun.com/document_detail/oss/api-reference/object/CopyObject.html
 //
@@ -338,7 +338,7 @@ func (bucket Bucket) copy(srcObjectKey, destBucketName, destObjectKey string, op
 // objectKey    the target object to append to.
 // reader    io.Reader. The read instance for reading the data to append.
 // appendPosition    the start position to append.
-// destObjectProperties    the options for the first appending, such as CacheControl, ContentDisposition, ContentEncoding,
+// destObjectProperties    the options for the first appending, such as CacheControl, , ContentEncoding,
 //                         Expires, ServerSideEncryption, ObjectACL.
 //
 // int64    the next append position, it's valid when error is nil.
@@ -663,7 +663,7 @@ func (bucket Bucket) ListObjectVersions(options ...Option) (ListObjectVersionsRe
 // SetObjectMeta sets the metadata of the Object.
 //
 // objectKey    object
-// options    options for setting the metadata. The valid options are CacheControl, ContentDisposition, ContentEncoding, Expires,
+// options    options for setting the metadata. The valid options are CacheControl, , ContentEncoding, Expires,
 //            ServerSideEncryption, and custom metadata.
 //
 // error    it's nil if no error, otherwise it's an error object.
@@ -925,7 +925,7 @@ func (bucket Bucket) SignURL(objectKey string, method HTTPMethod, expiredInSec i
 //
 // signedURL    signed URL.
 // reader    io.Reader the read instance for reading the data for the upload.
-// options    the options for uploading the data. The valid options are CacheControl, ContentDisposition, ContentEncoding,
+// options    the options for uploading the data. The valid options are CacheControl, , ContentEncoding,
 //            Expires, ServerSideEncryption, ObjectACL and custom metadata. Check out the following link for details:
 //            https://help.aliyun.com/document_detail/oss/api-reference/object/PutObject.html
 //

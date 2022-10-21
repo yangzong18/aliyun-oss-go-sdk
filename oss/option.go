@@ -537,6 +537,9 @@ func AddParam(key string, value interface{}) Option {
 
 func setHeader(key string, value interface{}) Option {
 	return func(params map[string]optionValue) error {
+		if strings.ToLower(key) == "content-type" {
+			key = HTTPHeaderContentType
+		}
 		if value == nil {
 			return nil
 		}

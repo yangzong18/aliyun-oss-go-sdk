@@ -91,15 +91,51 @@ func (conn Conn) Do(method, bucketName, objectName string, params map[string]int
 	data io.Reader, initCRC uint64, listener ProgressListener) (*Response, error) {
 	urlParams := conn.getURLParams(params)
 	subResource := conn.getSubResource(params)
-	uri := conn.url.getURL(bucketName, objectName, urlParams)
-
+	var uri *url.URL
+	var ossResource OSSResource
 	resource := ""
-	if conn.config.AuthVersion != AuthV4 {
-		resource = conn.getResource(bucketName, objectName, subResource)
+	if HasArnPrefix(bucketName) {
+		var err error
+		ossResource, err = NewOSSArnConverter().ConvertArn(bucketName)
+		if err != nil {
+			return nil, err
+		}
+		err = ensureSLDRequest(ossResource, conn.config.SLDEnabled)
+		if err != nil {
+			return nil, err
+		}
+		bucketName, err = determineBucketName(bucketName, ossResource)
+		if err != nil {
+			return nil, err
+		}
+		domainPrefix, err := determineDomainPrefix(bucketName, ossResource)
+		if err != nil {
+			return nil, err
+		}
+		finalEndpoint, err := determineFinalEndpoint(conn.config.Endpoint, domainPrefix, conn.config)
+		if err != nil {
+			return nil, err
+		}
+		conn.config.Endpoint = finalEndpoint
+		objectName = determineResourcePath(bucketName, objectName, conn.config.SLDEnabled)
+		resourceBucketName := determineResourceBucketName(bucketName, ossResource)
+		resourcePath := determineResourcePath(resourceBucketName, objectName, conn.config.SLDEnabled)
+		uri = conn.url.getURL(domainPrefix, objectName, urlParams)
+		if conn.config.AuthVersion != AuthV4 {
+			resource = conn.getResource(resourceBucketName, resourcePath, subResource)
+		} else {
+			resource = conn.getResourceV4(resourceBucketName, resourcePath, subResource)
+		}
 	} else {
-		resource = conn.getResourceV4(bucketName, objectName, subResource)
+		uri = conn.url.getURL(bucketName, objectName, urlParams)
+		if conn.config.AuthVersion != AuthV4 {
+			resource = conn.getResource(bucketName, objectName, subResource)
+		} else {
+			resource = conn.getResourceV4(bucketName, objectName, subResource)
+		}
 	}
-
+	fmt.Printf("uri:%#v\n", uri)
+	fmt.Printf("resource:%#v\n", resource)
 	return conn.doRequest(method, uri, resource, headers, data, initCRC, listener)
 }
 
@@ -327,9 +363,7 @@ func (conn Conn) doRequest(method string, uri *url.URL, canonicalizedResource st
 			req.Header.Set(k, v)
 		}
 	}
-
 	conn.signHeader(req, canonicalizedResource)
-
 	// Transfer started
 	event := newProgressEvent(TransferStartedEvent, 0, req.ContentLength, 0)
 	publishProgress(listener, event)

@@ -47,11 +47,17 @@ func New(endpoint, accessKeyID, accessKeySecret string, options ...ClientOption)
 	config.AccessKeyID = accessKeyID
 	config.AccessKeySecret = accessKeySecret
 
+	config.SLDEnabled = false
+
 	// URL parse
 	url := &urlMaker{}
 	err := url.Init(config.Endpoint, config.IsCname, config.IsUseProxy)
 	if err != nil {
 		return nil, err
+	}
+
+	if url.Type == urlTypeIP {
+		config.SLDEnabled = true
 	}
 
 	// HTTP connect

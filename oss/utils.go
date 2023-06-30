@@ -8,6 +8,7 @@ import (
 	"hash/crc64"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"runtime"
 	"strconv"
@@ -426,20 +427,24 @@ func ChoiceHeadObjectOption(options []Option) []Option {
 }
 
 func CheckBucketName(bucketName string) error {
-	nameLen := len(bucketName)
-	if nameLen < 3 || nameLen > 63 {
-		return fmt.Errorf("bucket name %s len is between [3-63],now is %d", bucketName, nameLen)
-	}
-
-	for _, v := range bucketName {
-		if !(('a' <= v && v <= 'z') || ('0' <= v && v <= '9') || v == '-') {
-			return fmt.Errorf("bucket name %s can only include lowercase letters, numbers, and -", bucketName)
+	if HasArnPrefix(bucketName) {
+		return nil
+	} else {
+		nameLen := len(bucketName)
+		if nameLen < 3 || nameLen > 63 {
+			return fmt.Errorf("bucket name %s len is between [3-63],now is %d", bucketName, nameLen)
 		}
+
+		for _, v := range bucketName {
+			if !(('a' <= v && v <= 'z') || ('0' <= v && v <= '9') || v == '-') {
+				return fmt.Errorf("bucket name %s can only include lowercase letters, numbers, and -", bucketName)
+			}
+		}
+		if bucketName[0] == '-' || bucketName[nameLen-1] == '-' {
+			return fmt.Errorf("bucket name %s must start and end with a lowercase letter or number", bucketName)
+		}
+		return nil
 	}
-	if bucketName[0] == '-' || bucketName[nameLen-1] == '-' {
-		return fmt.Errorf("bucket name %s must start and end with a lowercase letter or number", bucketName)
-	}
-	return nil
 }
 
 func CheckObjectName(objectName string) error {
@@ -606,4 +611,87 @@ func isInCharacterRange(r rune) (inrange bool) {
 		r >= 0x20 && r <= 0xD7FF ||
 		r >= 0xE000 && r <= 0xFFFD ||
 		r >= 0x10000 && r <= 0x10FFFF
+}
+
+func ensureSLDRequest(ossResource OSSResource, isSLDEnabled bool) error {
+	if isSLDEnabled {
+		if _, ok := ossResource.(*OSSAccessPointResource); ok {
+			return fmt.Errorf("access point can't support Second Level Domain")
+		}
+	}
+	return nil
+}
+
+func determineDomainPrefix(bucketName string, bucketResource OSSResource) (string, error) {
+	if bucketResource == nil {
+		return bucketName, nil
+	}
+	accessPointResource, ok := bucketResource.(*OSSAccessPointResource)
+	if ok {
+		return accessPointResource.AccessPointName + "-" + accessPointResource.AccountId, nil
+	} else {
+		return "", fmt.Errorf("get domain prefix from unsupported ARN type")
+	}
+}
+
+func determineResourceBucketName(bucketName string, resource OSSResource) string {
+	if resource == nil {
+		return bucketName
+	}
+	if res, ok := resource.(*OSSAccessPointResource); ok {
+		return "accesspoint/" + res.AccessPointName + "-" + res.AccountId
+	}
+	return bucketName
+}
+
+func determineBucketName(bucketName string, bucketResource OSSResource) (string, error) {
+	if bucketResource == nil {
+		return bucketName, nil
+	}
+	_, ok := bucketResource.(*OSSAccessPointResource)
+	if ok {
+		return "", nil
+	} else {
+		return "", fmt.Errorf("determineBucketName from unsupported ARN type")
+	}
+}
+
+func determineResourcePath(bucket, key string, sldEnabled bool) string {
+	if sldEnabled {
+		return makeBucketResourcePath(bucket, key)
+	} else {
+		return makeResourcePath(key)
+	}
+}
+
+func makeBucketResourcePath(bucket, key string) string {
+	if bucket != "" {
+		if key != "" {
+			return fmt.Sprintf("%s/%s", bucket, url.PathEscape(key))
+		} else {
+			return bucket
+		}
+	} else {
+		return ""
+	}
+}
+
+func makeResourcePath(key string) string {
+	if key != "" {
+		return url.PathEscape(key)
+	} else {
+		return ""
+	}
+}
+
+func determineFinalEndpoint(endpoint string, bucket string, config *Config) (string, error) {
+	combinedEndpoint := new(strings.Builder)
+	if bucket != "" && !config.SLDEnabled {
+		combinedEndpoint.WriteString(bucket)
+		combinedEndpoint.WriteString(".")
+		combinedEndpoint.WriteString(endpoint)
+	} else {
+		combinedEndpoint.WriteString(endpoint)
+	}
+	return combinedEndpoint.String(), nil
 }

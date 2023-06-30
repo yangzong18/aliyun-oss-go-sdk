@@ -110,6 +110,7 @@ type Config struct {
 	Region              string              //  such as cn-hangzhou
 	CloudBoxId          string              //
 	Product             string              //  oss or oss-cloudbox, default is oss
+	SLDEnabled          bool                // SLD
 }
 
 // LimitUploadSpeed uploadSpeed:KB/s, 0 is unlimited,default is 0
